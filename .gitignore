@@ -1,0 +1,7 @@
+.vscode
+.pytest_cache
+data/
+.env
+*.json
+*.parquet
+*.csv
