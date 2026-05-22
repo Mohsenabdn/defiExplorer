@@ -5,3 +5,7 @@ data/
 *.json
 *.parquet
 *.csv
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
