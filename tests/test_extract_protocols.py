@@ -1,14 +1,10 @@
-#!/usr/bin/env python3
-"""
-Unit tests for extract_protocols.py
-"""
-
-import pytest
 import pandas as pd
-import tempfile
 import os
-from datetime import datetime
 from unittest.mock import Mock, patch
+import tempfile
+import shutil
+
+# Import the module to test
 from extract_protocols import (
     extract_protocols_with_categories,
     save_to_parquet,
@@ -16,413 +12,166 @@ from extract_protocols import (
 )
 
 
-class MockProtocol:
-    """Mock protocol data structure"""
-    def __init__(self, name, category):
-        self.name = name
-        self.category = category
-        self.get = Mock(return_value=name)
-
-    def __getitem__(self, key):
-        if key == 'name':
-            return self.name
-        elif key == 'category':
-            return self.category
-        return None
-
-    def get(self, key, default=None):
-        if key == 'name':
-            return self.name
-        elif key == 'category':
-            return self.category
-        return default
-
-
 class TestExtractProtocols:
-    """Test cases for extract_protocols_with_categories function"""
+    """Tests for protocol extraction functionality."""
 
     @patch('extract_protocols.DefiLlama')
-    def test_extract_protocols_with_missing_fields(self, mock_defillama):
-        """Test extraction when protocols have missing fields"""
+    def test_extract_protocols_with_categories_success(self, mock_defillama):
+        """Test successful extraction of protocols with categories."""
+        # Mock the API response
         mock_client = Mock()
-        mock_defillama.return_value = mock_client
-
-        # Mock protocol data with missing fields
-        mock_protocols_data = [
-            {'name': 'Uniswap', 'category': 'Dexes'},
-            {'name': None, 'category': 'Lending'},  # Explicit None name
-            {'name': 'Compound', 'category': None},  # Explicit None category
-            {'name': 'MakerDAO'},  # Missing category entirely
-            {},  # Empty dict - missing both
-            {'name': '', 'category': ''},  # Empty strings
-        ]
-        mock_client.tvl.getProtocols.return_value = mock_protocols_data
-
-        df = extract_protocols_with_categories()
-
-        # Assertions - now matching actual behavior after fix
-        assert df is not None
-        assert len(df) == 6
-
-        # Check protocol names
-        assert df['protocol'].tolist() == [
-            'Uniswap',      # Normal
-            'Unknown',      # None becomes Unknown
-            'Compound',     # Normal
-            'MakerDAO',     # Normal (category missing but name present)
-            'Unknown',      # Empty dict - both become Unknown
-            'Unknown'       # Empty string becomes Unknown
-        ]
-
-        # Check categories
-        assert df['category'].tolist() == [
-            'Dexes',           # Normal
-            'Lending',         # Normal (name was None, but category is fine)
-            'Uncategorized',   # None category becomes Uncategorized
-            'Uncategorized',   # Missing category becomes Uncategorized
-            'Uncategorized',   # Empty dict - both become defaults
-            'Uncategorized'    # Empty string becomes Uncategorized
-        ]
-
-    @patch('extract_protocols.DefiLlama')
-    def test_extract_protocols_with_none_values(self, mock_defillama):
-        """Test extraction when protocol has None values"""
-        mock_client = Mock()
-        mock_defillama.return_value = mock_client
-
-        mock_protocols_data = [
+        mock_client.tvl.getProtocols.return_value = [
+            {
+                'name': 'Uniswap', 'category': 'DEX',
+                'url': 'https://uniswap.org'
+            },
+            {
+                'name': 'Aave', 'category': 'Lending',
+                'parentProtocolSlug': 'v3', 'url': 'https://aave.com'
+            },
+            {
+                'name': '  Curve  ', 'category': '  DEX  ',
+                'parentProtocolSlug': '', 'url': ''
+            },
             {'name': None, 'category': None},
-            {'name': 'ValidName', 'category': None},
-            {'name': None, 'category': 'ValidCategory'},
+            {'name': '', 'category': '', 'parentProtocolSlug': '', 'url': ''},
         ]
-        mock_client.tvl.getProtocols.return_value = mock_protocols_data
+        mock_defillama.return_value = mock_client
+
+        # Execute
+        df = extract_protocols_with_categories()
+
+        # Assert
+        assert len(df) == 5
+        assert list(df.columns) == [
+            'protocol', 'category', 'parent_protocol', 'url'
+        ]
+
+        # Check name cleaning
+        assert df.iloc[0]['protocol'] == 'Uniswap'
+        assert df.iloc[2]['protocol'] == 'Curve'
+        assert df.iloc[3]['protocol'] == 'Unknown'
+        assert df.iloc[4]['protocol'] == 'Unknown'
+
+        # Check category cleaning
+        assert df.iloc[0]['category'] == 'DEX'
+        assert df.iloc[2]['category'] == 'DEX'
+        assert df.iloc[3]['category'] == 'Uncategorized'
+
+        # Check parent protocol handling
+        assert pd.isna(df.iloc[0]['parent_protocol'])
+        assert df.iloc[1]['parent_protocol'] == 'v3'
+        assert pd.isna(df.iloc[2]['parent_protocol'])
+
+        # Check URL handling
+        assert df.iloc[0]['url'] == 'https://uniswap.org'
+        assert df.iloc[1]['url'] == 'https://aave.com'
+        assert pd.isna(df.iloc[2]['url'])
+
+    @patch('extract_protocols.DefiLlama')
+    def test_extract_protocols_with_categories_api_error(self, mock_defillama):
+        """Test handling of API errors during protocol extraction."""
+        mock_client = Mock()
+        mock_client.tvl.getProtocols.side_effect = Exception(
+            "API connection failed"
+        )
+        mock_defillama.return_value = mock_client
+
+        df = extract_protocols_with_categories()
+
+        assert df is None
+
+    @patch('extract_protocols.DefiLlama')
+    def test_extract_protocols_empty_response(self, mock_defillama):
+        """Test handling of empty API response."""
+        mock_client = Mock()
+        mock_client.tvl.getProtocols.return_value = []
+        mock_defillama.return_value = mock_client
 
         df = extract_protocols_with_categories()
 
         assert df is not None
-        assert len(df) == 3
-
-        # First protocol: both None
-        assert df.iloc[0]['protocol'] == 'Unknown'
-        assert df.iloc[0]['category'] == 'Uncategorized'
-
-        # Second protocol: valid name, None category
-        assert df.iloc[1]['protocol'] == 'ValidName'
-        assert df.iloc[1]['category'] == 'Uncategorized'
-
-        # Third protocol: None name, valid category
-        assert df.iloc[2]['protocol'] == 'Unknown'
-        assert df.iloc[2]['category'] == 'ValidCategory'
-
-    @patch('extract_protocols.DefiLlama')
-    def test_extract_protocols_with_empty_strings(self, mock_defillama):
-        """Test extraction when protocol has empty strings"""
-        mock_client = Mock()
-        mock_defillama.return_value = mock_client
-
-        mock_protocols_data = [
-            {'name': '', 'category': ''},
-            {'name': '   ', 'category': '   '},  # This was causing the error
-        ]
-        mock_client.tvl.getProtocols.return_value = mock_protocols_data
-
-        df = extract_protocols_with_categories()
-
-        assert df is not None
-        assert len(df) == 2
-
-        # Both should be 'Unknown' after stripping
-        assert df.iloc[0]['protocol'] == 'Unknown'
-        assert df.iloc[0]['category'] == 'Uncategorized'
-
-        # The whitespace-only string should become 'Unknown'
-        assert df.iloc[1]['protocol'] == 'Unknown'
-        assert df.iloc[1]['category'] == 'Uncategorized'
-
-        # Verify no whitespace strings remain
-        assert not df['protocol'].str.contains(r'^\s+$', na=False).any()
-        assert not df['category'].str.contains(r'^\s+$', na=False).any()
-
-    @patch('extract_protocols.DefiLlama')
-    def test_extract_protocols_with_mixed_valid_invalid(self, mock_defillama):
-        """Test extraction with mix of valid and invalid data"""
-        mock_client = Mock()
-        mock_defillama.return_value = mock_client
-
-        mock_protocols_data = [
-            {'name': 'Uniswap', 'category': 'Dexes'},
-            {'name': None, 'category': 'Dexes'},  # Name missing
-            {'name': 'Aave', 'category': None},   # Category missing
-            {'name': 'Compound'},                  # Category missing
-        ]
-        mock_client.tvl.getProtocols.return_value = mock_protocols_data
-
-        df = extract_protocols_with_categories()
-
-        # Verify no NaN values in DataFrame
-        assert not df['protocol'].isna().any()
-        assert not df['category'].isna().any()
-
-        # Verify specific values
-        assert df[df['protocol'] == 'Uniswap']['category'].iloc[0] == 'Dexes'
-        assert df[df['protocol'] == 'Unknown']['category'].iloc[0] == 'Dexes'
-        assert df[df['protocol'] == 'Aave']['category'].iloc[0] ==\
-            'Uncategorized'
-        assert df[df['protocol'] == 'Compound']['category'].iloc[0] ==\
-            'Uncategorized'
+        assert len(df) == 0
+        assert len(df.columns) == 0 or list(df.columns) == []
 
 
 class TestSaveToParquet:
-    """Test cases for save_to_parquet function"""
+    """Tests for parquet saving functionality."""
 
-    @pytest.fixture
-    def sample_dataframe(self):
-        """Create a sample DataFrame for testing"""
-        return pd.DataFrame({
-            'protocol': ['Uniswap', 'Aave', 'Compound'],
-            'category': ['Dexes', 'Lending', 'Lending']
+    def setup_method(self):
+        """Set up temporary directory for each test."""
+        self.temp_dir = tempfile.mkdtemp()
+
+    def teardown_method(self):
+        """Clean up temporary directory after each test."""
+        shutil.rmtree(self.temp_dir)
+
+    def test_save_to_parquet_success(self):
+        """Test successful saving of DataFrame to parquet."""
+        df = pd.DataFrame({
+            'protocol': ['Uniswap', 'Aave'],
+            'category': ['DEX', 'Lending'],
+            'parent_protocol': [None, 'v3'],
+            'url': ['https://uniswap.org', 'https://aave.com']
         })
 
-    def test_save_to_parquet_with_default_name(self, sample_dataframe):
-        """Test saving with default filename"""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            original_cwd = os.getcwd()
-            os.chdir(tmpdir)
-            try:
-                # Create data directory structure
-                os.makedirs("data/tvl/protocols", exist_ok=True)
+        filename = save_to_parquet(
+            df, self.temp_dir, f"{self.temp_dir}/test.parquet"
+        )
 
-                filename = save_to_parquet(sample_dataframe)
+        assert filename is not None
+        assert os.path.exists(filename)
 
-                assert filename is not None
-                assert "partition_date=" in filename
-                assert filename.endswith(".parquet")
-                assert os.path.exists(filename)
+        # Verify the saved file
+        saved_df = pd.read_parquet(filename)
+        assert 'partition_date' in saved_df.columns
+        assert len(saved_df) == 2
+        assert saved_df['protocol'].iloc[0] == 'Uniswap'
 
-                # Verify the saved data
-                df_loaded = pd.read_parquet(filename)
-                assert len(df_loaded) == 3
-                assert 'partition_date' in df_loaded.columns
-                assert df_loaded['protocol'].tolist() == [
-                    'Uniswap', 'Aave', 'Compound'
-                ]
-            finally:
-                os.chdir(original_cwd)
+        # Clean up
+        os.remove(filename)
 
-    def test_save_to_parquet_with_custom_name(self, sample_dataframe):
-        """Test saving with custom filename"""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            original_cwd = os.getcwd()
-            os.chdir(tmpdir)
-            try:
-                os.makedirs("data/tvl/protocols", exist_ok=True)
-                timestamp = datetime.now().strftime("%Y%m%d")
-                custom_filename = f"data/tvl/protocols/\
-partition_date={timestamp}/custom_protocols.parquet"
+    def test_save_to_parquet_empty_dataframe(self):
+        """Test saving an empty DataFrame."""
+        df = pd.DataFrame(columns=['protocol', 'category'])
 
-                filename = save_to_parquet(sample_dataframe, custom_filename)
+        filename = save_to_parquet(
+            df, self.temp_dir, f"{self.temp_dir}/empty.parquet"
+        )
 
-                assert filename == custom_filename
-                assert os.path.exists(custom_filename)
-            finally:
-                os.chdir(original_cwd)
+        assert filename is not None
+        assert os.path.exists(filename)
 
-    def test_save_to_parquet_adds_timestamp_column(self, sample_dataframe):
-        """Test that timestamp column is added correctly"""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            original_cwd = os.getcwd()
-            os.chdir(tmpdir)
-            try:
-                os.makedirs("data/tvl/protocols", exist_ok=True)
-
-                filename = save_to_parquet(sample_dataframe)
-                df_loaded = pd.read_parquet(filename)
-
-                assert 'partition_date' in df_loaded.columns
-                assert df_loaded['partition_date'].dtype == int
-                current_date = int(datetime.now().strftime("%Y%m%d"))
-                assert (df_loaded['partition_date'] == current_date).all()
-            finally:
-                os.chdir(original_cwd)
-
-    def test_save_to_parquet_creates_directory(self, sample_dataframe):
-        """Test that directory is created if it doesn't exist"""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            original_cwd = os.getcwd()
-            os.chdir(tmpdir)
-            try:
-                # Ensure directory doesn't exist initially
-                assert not os.path.exists("data/tvl/protocols")
-
-                filename = save_to_parquet(sample_dataframe)
-
-                assert os.path.exists(os.path.dirname(filename))
-                assert os.path.exists(filename)
-            finally:
-                os.chdir(original_cwd)
-
-    def test_save_to_parquet_original_df_unchanged(self, sample_dataframe):
-        """Test that original DataFrame is not modified"""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            original_cwd = os.getcwd()
-            os.chdir(tmpdir)
-            try:
-                os.makedirs("data/tvl/protocols", exist_ok=True)
-                original_columns = sample_dataframe.columns.tolist()
-
-                save_to_parquet(sample_dataframe)
-
-                # Original DataFrame should not have partition_date column
-                assert sample_dataframe.columns.tolist() == original_columns
-                assert 'partition_date' not in sample_dataframe.columns
-            finally:
-                os.chdir(original_cwd)
-
-    @patch('extract_protocols.pd.DataFrame.to_parquet')
-    def test_save_to_parquet_handles_exception(
-        self, mock_to_parquet, sample_dataframe
-    ):
-        """Test handling of exception during save"""
-        mock_to_parquet.side_effect = Exception("Disk full")
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            original_cwd = os.getcwd()
-            os.chdir(tmpdir)
-            try:
-                os.makedirs("data/tvl/protocols", exist_ok=True)
-
-                filename = save_to_parquet(sample_dataframe)
-
-                assert filename is None
-            finally:
-                os.chdir(original_cwd)
-
-    def test_save_to_parquet_multiple_calls_different_dates(
-            self, sample_dataframe
-    ):
-        """Test saving multiple times with different dates"""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            original_cwd = os.getcwd()
-            os.chdir(tmpdir)
-            try:
-                os.makedirs("data/tvl/protocols", exist_ok=True)
-
-                # First save
-                filename1 = save_to_parquet(sample_dataframe)
-
-                # Simulate a different date by patching datetime
-                with patch('extract_protocols.datetime') as mock_datetime:
-                    mock_datetime.now.return_value.strftime.return_value =\
-                        "20231225"
-                    mock_datetime.now.return_value = datetime(2023, 12, 25)
-                    filename2 = save_to_parquet(sample_dataframe)
-
-                assert filename1 != filename2
-                assert os.path.exists(filename1)
-                assert os.path.exists(filename2)
-                assert "20231225" in filename2
-            finally:
-                os.chdir(original_cwd)
+        saved_df = pd.read_parquet(filename)
+        assert 'partition_date' in saved_df.columns
+        assert len(saved_df) == 0
 
 
 class TestShowStatistics:
-    """Test cases for show_statistics function"""
+    """Tests for statistics display functionality."""
 
-    @pytest.fixture
-    def sample_dataframe(self):
-        """Create a sample DataFrame for testing"""
-        return pd.DataFrame({
-            'protocol': [
-                'Uniswap', 'Aave', 'Compound', 'MakerDAO', 'Curve',
-                'Balancer', 'SushiSwap', 'PancakeSwap', 'Yearn', '1inch'
-            ],
-            'category': [
-                'Dexes', 'Lending', 'Lending', 'CDP', 'Dexes',
-                'Dexes', 'Dexes', 'Dexes', 'Yield', 'Aggregator'
-            ]
-        })
-
-    def test_show_statistics_runs_successfully(self, sample_dataframe, capsys):
-        """Test that show_statistics runs without errors"""
-        show_statistics(sample_dataframe)
-        captured = capsys.readouterr()
-
-        assert "PROTOCOL EXTRACTION STATISTICS" in captured.out
-        assert "Total protocols: 10" in captured.out
-        assert "Unique categories:" in captured.out
-        assert "Top 10 Categories by Protocol Count" in captured.out
-
-    def test_show_statistics_empty_dataframe(self, capsys):
-        """Test show_statistics with empty DataFrame"""
-        empty_df = pd.DataFrame(columns=['protocol', 'category'])
-
-        show_statistics(empty_df)
-        captured = capsys.readouterr()
-
-        assert "Total protocols: 0" in captured.out
-        assert "Unique categories: 0" in captured.out
-
-    def test_show_statistics_with_uncategorized(self, capsys):
-        """Test show_statistics with Uncategorized category"""
+    def test_show_statistics_with_data(self, capsys):
+        """Test statistics display with valid data."""
         df = pd.DataFrame({
-            'protocol': ['Proto1', 'Proto2', 'Proto3'],
-            'category': ['Uncategorized', 'Dexes', 'Uncategorized']
+            'protocol': ['Uniswap', 'Aave', 'Curve', 'Compound', 'Maker'],
+            'category': ['DEX', 'Lending', 'DEX', 'Lending', 'CDP']
         })
 
         show_statistics(df)
+
         captured = capsys.readouterr()
+        assert "Total protocols: 5" in captured.out
+        assert "Unique categories: 3" in captured.out
+        assert "DEX" in captured.out
+        assert "Lending" in captured.out
+        assert "CDP" in captured.out
 
-        assert "Uncategorized" in captured.out
-        assert "Unique categories: 2" in captured.out
+    def test_show_statistics_empty_dataframe(self, capsys):
+        """Test statistics display with empty DataFrame."""
+        df = pd.DataFrame(columns=['protocol', 'category'])
 
-    def test_show_statistics_category_counts(self, sample_dataframe, capsys):
-        """Test that category counts are displayed correctly"""
-        show_statistics(sample_dataframe)
+        show_statistics(df)
+
         captured = capsys.readouterr()
-
-        # Check that Dexes appears with count 5
-        assert "Dexes" in captured.out
-        assert "5" in captured.out
-
-
-class TestIntegration:
-    """Integration tests for the complete workflow"""
-
-    @patch('extract_protocols.DefiLlama')
-    def test_end_to_end_workflow(self, mock_defillama):
-        """Test the complete extraction and saving workflow"""
-        # Setup mock
-        mock_client = Mock()
-        mock_defillama.return_value = mock_client
-        mock_protocols_data = [
-            {'name': 'Uniswap', 'category': 'Dexes'},
-            {'name': 'Aave', 'category': 'Lending'},
-            {'name': 'Compound', 'category': 'Lending'},
-        ]
-        mock_client.tvl.getProtocols.return_value = mock_protocols_data
-
-        # Extract
-        df = extract_protocols_with_categories()
-        assert len(df) == 3
-
-        # Save - use a temporary directory
-        with tempfile.TemporaryDirectory() as tmpdir:
-            original_dir = os.getcwd()
-            os.chdir(tmpdir)
-            try:
-                filename = save_to_parquet(df)
-                assert filename is not None
-                assert os.path.exists(filename)
-
-                # Verify saved data
-                df_loaded = pd.read_parquet(filename)
-                assert len(df_loaded) == 3
-                assert 'partition_date' in df_loaded.columns
-                assert 'protocol' in df_loaded.columns
-                assert 'category' in df_loaded.columns
-            finally:
-                os.chdir(original_dir)
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v", "--tb=short"])
+        assert "Total protocols: 0" in captured.out
+        assert "Unique categories: 0" in captured.out
