@@ -1,0 +1,43 @@
+{
+  "file_path": "/home/mohsen/projects/defiExplorer/data/tvl/protocols/partition_date=20260524/defillama_protocols.parquet",
+  "file_name": "defillama_protocols.parquet",
+  "format": "parquet",
+  "generated_at": "2026-05-24T22:20:15.915563",
+  "fields": [
+    {
+      "name": "protocol",
+      "type": "large_string",
+      "nullable": true,
+      "physical_type": "BYTE_ARRAY",
+      "logical_type": "string"
+    },
+    {
+      "name": "category",
+      "type": "large_string",
+      "nullable": true,
+      "physical_type": "BYTE_ARRAY",
+      "logical_type": "string"
+    },
+    {
+      "name": "parent_protocol",
+      "type": "large_string",
+      "nullable": true,
+      "physical_type": "BYTE_ARRAY",
+      "logical_type": "string"
+    },
+    {
+      "name": "url",
+      "type": "large_string",
+      "nullable": true,
+      "physical_type": "BYTE_ARRAY",
+      "logical_type": "string"
+    },
+    {
+      "name": "partition_date",
+      "type": "int64",
+      "nullable": true,
+      "physical_type": "INT64",
+      "logical_type": "integer"
+    }
+  ]
+}

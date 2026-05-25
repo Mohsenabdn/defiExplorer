@@ -1,5 +1,5 @@
-requests==2.34.2
-defillama-sdk==0.1.4
-flake8==7.3.0
+defillama_sdk==0.1.4
 pandas==3.0.3
 pyarrow==24.0.0
+pytest==9.0.3
+flake8==7.3.0

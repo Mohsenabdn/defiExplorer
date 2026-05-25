@@ -9,6 +9,7 @@ from defillama_sdk import DefiLlama
 from datetime import datetime
 import logging
 import os
+from src.catalog import Catalog
 
 # Set up logging
 logging.basicConfig(
@@ -37,23 +38,49 @@ def extract_protocols_with_categories():
     protocols_list = []
 
     for protocol in protocols_data:
-        # Extract protocol name (handle missing data)
+        # Extract protocol name - handle None and whitespace values
         name = protocol.get('name', 'Unknown')
+        # Convert to string, strip whitespace, and check if empty
+        if name is None or str(name).strip() == '':
+            name = 'Unknown'
+        else:
+            name = str(name).strip()  # Clean up any extra whitespace
 
-        # Extract category (handle missing data)
+        # Extract category - handle None and whitespace values
         category = protocol.get('category', 'Uncategorized')
-
-        # Handle special cases where category might be None or empty
-        if not category or category == '':
+        if category is None or str(category).strip() == '':
             category = 'Uncategorized'
+        else:
+            category = str(category).strip()  # Clean up any extra whitespace
+
+        # Extract parent protocol slug if exists otherwise none
+        parentProtocol = protocol.get('parentProtocolSlug', None)
+        if isinstance(parentProtocol, str):
+            if parentProtocol.strip() == '':
+                parentProtocol = None
+            else:
+                parentProtocol = parentProtocol.strip()
+
+        # Extract URL if exists otherwise none
+        url = protocol.get('url', None)
+        if isinstance(url, str):
+            if url.strip() == '':
+                url = None
+            else:
+                url = url.strip()
 
         protocols_list.append({
             'protocol': name,
-            'category': category
+            'category': category,
+            'parent_protocol': parentProtocol,
+            'url': url
         })
 
     # Create DataFrame
     df = pd.DataFrame(protocols_list)
+
+    # Convert any remaining NaN values (just in case)
+    df = df.fillna({'protocol': 'Unknown', 'category': 'Uncategorized'})
 
     logger.info(
         f"Created DataFrame with {len(df)} rows and {len(df.columns)} columns"
@@ -62,11 +89,10 @@ def extract_protocols_with_categories():
     return df
 
 
-def save_to_parquet(df, filename=None):
+def save_to_parquet(df, prefix, filename=None):
     """
     Save DataFrame to Parquet file.
     """
-    prefix = "data/tvl/protocols"
     timestamp = datetime.now().strftime("%Y%m%d")
 
     # Create partition_date directory
@@ -135,7 +161,8 @@ def main():
     show_statistics(df)
 
     # Save to file
-    filename = save_to_parquet(df)
+    dataPrefix = "data/tvl/protocols"
+    filename = save_to_parquet(df, dataPrefix)
 
     if filename:
         print("\n💾 Data saved successfully!")
@@ -149,6 +176,12 @@ def main():
         print(f"{size_mb:.2f} MB")
 
     logger.info("🎉 Extraction completed successfully!")
+
+    # Creating latest schema
+    schemaname = f"schemas/{"/".join(dataPrefix.split("/")[-2:])}.json"
+    os.makedirs("/".join(schemaname.split("/")[:-1]), exist_ok=True)
+    catalog = Catalog()
+    catalog.generate_schema_from_parquet(filename, schemaname)
 
 
 if __name__ == "__main__":
