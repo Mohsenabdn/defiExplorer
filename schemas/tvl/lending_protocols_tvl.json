@@ -1,0 +1,29 @@
+{
+  "file_path": "/home/mohsen/projects/defiExplorer/data/tvl/lending_protocols_tvl/partition_date=20260525/defillama_lending_tvl.parquet",
+  "file_name": "defillama_lending_tvl.parquet",
+  "format": "parquet",
+  "generated_at": "2026-05-25T22:46:18.173864",
+  "fields": [
+    {
+      "name": "protocol",
+      "type": "large_string",
+      "nullable": true,
+      "physical_type": "BYTE_ARRAY",
+      "logical_type": "string"
+    },
+    {
+      "name": "url",
+      "type": "large_string",
+      "nullable": true,
+      "physical_type": "BYTE_ARRAY",
+      "logical_type": "string"
+    },
+    {
+      "name": "tvl",
+      "type": "double",
+      "nullable": true,
+      "physical_type": "DOUBLE",
+      "logical_type": "float"
+    }
+  ]
+}
