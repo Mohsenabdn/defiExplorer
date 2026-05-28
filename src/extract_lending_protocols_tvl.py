@@ -119,7 +119,7 @@ Trying another appraoch."
                         f"Unexpected error for protocol '{protocol_name}':\
 {e}. Setting TVL to None."
                     )
-            tvl_value = None
+                tvl_value = None
 
         tvl_results.append(
             {
