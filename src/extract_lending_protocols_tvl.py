@@ -41,18 +41,12 @@ def get_lending_protocols_tvl(
     required_columns = ['protocol', 'category', 'url', 'parent_protocol']
     for col in required_columns:
         if col not in df.columns:
-            raise ValueError(
-                f"Input parquet file must contain '{col}' column.\
-Found columns: {df.columns.tolist()}"
-            )
+            raise ValueError(f"Input parquet file must contain '{col}' column. Found columns: {df.columns.tolist()}")
 
     # Step 2: Filter for lending protocols (case-insensitive)
     logger.info("Filtering for lending protocols...")
     lending_df = df[df['category'].str.lower() == 'lending'].copy()
-    logger.info(
-        f"Found {len(lending_df)} lending protocols out of {len(df)}\
-total protocols"
-    )
+    logger.info(f"Found {len(lending_df)} lending protocols out of {len(df)} total protocols")
 
     if len(lending_df) == 0:
         logger.warning("No lending protocols found in the input file")
@@ -84,41 +78,21 @@ total protocols"
             tvl_value = client.tvl.getTvl(protocol_name)
         except Exception as e:
             # Check if it's an ApiError (or any other exception)
-            if (
-                'ApiError' in str(type(e))
-                or 'API' in str(e)
-                or 'api' in str(e).lower()
-            ):
+            if 'ApiError' in str(type(e)) or 'API' in str(e) or 'api' in str(e).lower():
                 api_error_tvl_counter += 1
-                logger.warning(
-                    f"ApiError for protocol '{protocol_name}': {e}.\
-Trying another appraoch."
-                )
+                logger.warning(f"ApiError for protocol '{protocol_name}': {e}. Trying another appraoch.")
             else:
-                logger.warning(
-                    f"Unexpected error for protocol '{protocol_name}':\
-{e}. Setting TVL to None."
-                )
+                logger.warning(f"Unexpected error for protocol '{protocol_name}': {e}. Setting TVL to None.")
             try:
                 protocol = client.tvl.getProtocol(protocol_name)
                 tvl_value = protocol['tvl'][-1]['totalLiquidityUSD']
             except Exception as e:
                 # Check if it's an ApiError (or any other exception)
-                if (
-                    'ApiError' in str(type(e))
-                    or 'API' in str(e)
-                    or 'api' in str(e).lower()
-                ):
+                if 'ApiError' in str(type(e)) or 'API' in str(e) or 'api' in str(e).lower():
                     api_error_protocol_counter += 1
-                    logger.warning(
-                        f"ApiError for protocol '{protocol_name}':\
-{e}. Setting TVL to None."
-                    )
+                    logger.warning(f"ApiError for protocol '{protocol_name}': {e}. Setting TVL to None.")
                 else:
-                    logger.warning(
-                        f"Unexpected error for protocol '{protocol_name}':\
-{e}. Setting TVL to None."
-                    )
+                    logger.warning(f"Unexpected error for protocol '{protocol_name}': {e}. Setting TVL to None.")
                 tvl_value = None
 
         tvl_results.append(
@@ -132,19 +106,12 @@ Trying another appraoch."
     # Step 5: Create output DataFrame
     output_df = pd.DataFrame(tvl_results).drop_duplicates()
     logger.info(
-        f"Used parent_protocol for {parent_as_protocol_counter}\
-out of {len(lending_df)} lending protocols to retrieve TVL"
+        f"Used parent_protocol for {parent_as_protocol_counter} out of {len(lending_df)} lending protocols to retrieve TVL"
     )
     if api_error_tvl_counter > 0:
-        logger.warning(
-            f"Encountered {api_error_tvl_counter}\
-API errors while fetching TVL data"
-        )
+        logger.warning(f"Encountered {api_error_tvl_counter} API errors while fetching TVL data")
     if api_error_protocol_counter > 0:
-        logger.warning(
-            f"Encountered {api_error_protocol_counter}\
-API errors while fetching TVL data by second approach"
-        )
+        logger.warning(f"Encountered {api_error_protocol_counter} API errors while fetching TVL data by second approach")
 
     # Step 6: Save to parquet file
     logger.info(f"Saving results to {output_parquet_path}")
@@ -165,8 +132,7 @@ def main():
     input = f"{input_prefix}/partition_date={timestamp}/"
 
     # Output path
-    output_prefix_with_partition =\
-        f"data/tvl/lending_protocols_tvl/partition_date={timestamp}"
+    output_prefix_with_partition = f"data/tvl/lending_protocols_tvl/partition_date={timestamp}"
     os.makedirs(output_prefix_with_partition, exist_ok=True)
     output = f"{output_prefix_with_partition}/defillama_lending_tvl.parquet"
 
@@ -182,14 +148,12 @@ def main():
 
         print(f"\n📈 Total lending protocols: {len(result_df):,}")
         print(f"💵 Protocols with TVL data: {result_df['tvl'].notna().sum():,}")
-        print(
-            f"❓ Protocols without TVL data: {result_df['tvl'].isna().sum():,}"
-        )
+        print(f"❓ Protocols without TVL data: {result_df['tvl'].isna().sum():,}")
 
         if result_df['tvl'].notna().any():
             print("\n💰 Top 5 lending protocols by TVL:")
             top_protocols = result_df.nlargest(5, 'tvl')
-            for idx, row in top_protocols.iterrows():
+            for _, row in top_protocols.iterrows():
                 print(f"   {row['protocol']:<30} : ${row['tvl']:>15,.2f}")
 
         print(f"\n💾 Output saved to: {output}")
@@ -201,8 +165,7 @@ def main():
             print(f"📁 File size: {size_kb:.2f} KB")
 
         # Creating latest schema
-        schemaname = f"schemas/\
-{"/".join(output_prefix_with_partition.split("/")[-3:-1])}.json"
+        schemaname = f"schemas/{"/".join(output_prefix_with_partition.split("/")[-3:-1])}.json"
         os.makedirs("/".join(schemaname.split("/")[:-1]), exist_ok=True)
         catalog = Catalog()
         catalog.generate_schema_from_parquet(output, schemaname)

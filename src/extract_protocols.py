@@ -12,9 +12,7 @@ import os
 from src.catalog import Catalog
 
 # Set up logging
-logging.basicConfig(
-    level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 
@@ -82,9 +80,7 @@ def extract_protocols_with_categories():
     # Convert any remaining NaN values (just in case)
     df = df.fillna({'protocol': 'Unknown', 'category': 'Uncategorized'})
 
-    logger.info(
-        f"Created DataFrame with {len(df)} rows and {len(df.columns)} columns"
-    )
+    logger.info(f"Created DataFrame with {len(df)} rows and {len(df.columns)} columns")
 
     return df
 

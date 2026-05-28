@@ -53,10 +53,7 @@ def explore_submodules(client, submodule_name):
     submodule = getattr(client, submodule_name)
     submodule_methods = [m for m in dir(submodule) if not m.startswith('_')]
 
-    print(
-        f"\n📁 {submodule_name.upper()} Submodule Methods \
-        ({len(submodule_methods)} total):"
-    )
+    print(f"\n📁 {submodule_name.upper()} Submodule Methods ({len(submodule_methods)} total):")
 
     methods_info = {}
     for method_name in submodule_methods:
@@ -114,8 +111,7 @@ def explore_data_structure(data, name="Data", max_depth=2, current_depth=0):
                 value = data[key]
                 value_type = type(value).__name__
                 if isinstance(value, (dict, list)):
-                    print(f"{indent}  🔑 '{key}': {value_type}\
-                           ({len(value)} items)")
+                    print(f"{indent}  🔑 '{key}': {value_type}({len(value)} items)")
                 else:
                     preview = str(value)[:50]
                     print(f"{indent}  🔑 '{key}': {value_type} = {preview}...")
@@ -140,8 +136,7 @@ def main():
 
     # 2. Look for common submodules
     potential_submodules = [
-        'tvl', 'fees', 'revenue', 'yields', 'apy', 'lending',
-        'protocols', 'chains', 'tokens', 'liquidity', 'unlocks'
+        'tvl', 'fees', 'revenue', 'yields', 'apy', 'lending', 'protocols', 'chains', 'tokens', 'liquidity', 'unlocks'
     ]
 
     available_submodules = []
@@ -177,15 +172,13 @@ def main():
         ]
         if lending_protocols:
             sample = lending_protocols[0]
-            print(f"\n  Example: {sample.get('name')}\
-                    (Category: {sample.get('category')})")
+            print(f"\n  Example: {sample.get('name')}(Category: {sample.get('category')})")
             explore_data_structure(sample, "Protocol", max_depth=1)
 
             # Look for yield-related fields
             print("\n  🔎 Searching for yield/APY related fields:")
             yield_keywords = [
-                'apy', 'yield', 'rate', 'interest',
-                'reward', 'borrow', 'supply'
+                'apy', 'yield', 'rate', 'interest', 'reward', 'borrow', 'supply'
             ]
             for key in sample.keys():
                 for keyword in yield_keywords:
@@ -232,22 +225,10 @@ def main():
 
     # Try common endpoint patterns
     test_endpoints = [
-        (
-            'client.get_yields', lambda: client.get_yields()
-            if hasattr(client, 'get_yields') else None
-        ),
-        (
-            'client.yields', lambda: client.yields
-            if hasattr(client, 'yields') else None
-        ),
-        (
-            'client.apy', lambda: client.apy
-            if hasattr(client, 'apy') else None
-        ),
-        (
-            'client.tvl.get_yields', lambda: client.tvl.get_yields()
-            if hasattr(client.tvl, 'get_yields') else None
-        ),
+        ('client.get_yields', lambda: client.get_yields() if hasattr(client, 'get_yields') else None),
+        ('client.yields', lambda: client.yields if hasattr(client, 'yields') else None),
+        ('client.apy', lambda: client.apy if hasattr(client, 'apy') else None),
+        ('client.tvl.get_yields', lambda: client.tvl.get_yields() if hasattr(client.tvl, 'get_yields') else None)
     ]
 
     for name, callable_func in test_endpoints:
@@ -273,9 +254,7 @@ def main():
 
     📊 Data Retrieved:
     - Total Protocols: {len(protocols) if protocols else 0}
-    - Lending Protocols: {
-        len(lending_protocols) if 'lending_protocols' in locals() else 0
-    }
+    - Lending Protocols: {len(lending_protocols) if 'lending_protocols' in locals() else 0}
 
     💡 Recommendations:
     1. Use client.tvl.getProtocols() to list all lending platforms
