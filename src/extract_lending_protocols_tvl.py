@@ -65,6 +65,7 @@ def get_lending_protocols_tvl(
     parent_as_protocol_counter = 0
     api_error_tvl_counter = 0
     api_error_protocol_counter = 0
+    timestamp = datetime.now().strftime("%Y%m%d")
 
     for _, row in lending_df.iterrows():
         if pd.isna(row['parent_protocol']):
@@ -99,7 +100,8 @@ def get_lending_protocols_tvl(
             {
                 'protocol': protocol_name,
                 'url': row['url'],
-                'tvl': tvl_value
+                'tvl': tvl_value,
+                'partition_date': int(timestamp)
             }
         )
 

@@ -1,8 +1,8 @@
 {
-  "file_path": "/home/mohsen/projects/defiExplorer/data/tvl/protocols/partition_date=20260527/defillama_protocols.parquet",
+  "file_path": "/home/mohsen/projects/defiExplorer/data/tvl/protocols/partition_date=20260530/defillama_protocols.parquet",
   "file_name": "defillama_protocols.parquet",
   "format": "parquet",
-  "generated_at": "2026-05-27T21:11:33.059984",
+  "generated_at": "2026-05-30T09:06:58.282346",
   "fields": [
     {
       "name": "protocol",
