@@ -1,0 +1,127 @@
+{
+  "file_path": "/home/mohsen/projects/defiExplorer/data/lenders/morpho_rates/partition_date=20260530/morpho_rates.parquet",
+  "file_name": "morpho_rates.parquet",
+  "format": "parquet",
+  "generated_at": "2026-05-30T21:49:58.449404",
+  "fields": [
+    {
+      "name": "market_id",
+      "type": "large_string",
+      "nullable": true,
+      "physical_type": "BYTE_ARRAY",
+      "logical_type": "string"
+    },
+    {
+      "name": "symbol",
+      "type": "large_string",
+      "nullable": true,
+      "physical_type": "BYTE_ARRAY",
+      "logical_type": "string"
+    },
+    {
+      "name": "name",
+      "type": "large_string",
+      "nullable": true,
+      "physical_type": "BYTE_ARRAY",
+      "logical_type": "string"
+    },
+    {
+      "name": "decimals",
+      "type": "int64",
+      "nullable": true,
+      "physical_type": "INT64",
+      "logical_type": "integer"
+    },
+    {
+      "name": "collateral_symbol",
+      "type": "large_string",
+      "nullable": true,
+      "physical_type": "BYTE_ARRAY",
+      "logical_type": "string"
+    },
+    {
+      "name": "collateral_name",
+      "type": "large_string",
+      "nullable": true,
+      "physical_type": "BYTE_ARRAY",
+      "logical_type": "string"
+    },
+    {
+      "name": "supply_apy_percent",
+      "type": "double",
+      "nullable": true,
+      "physical_type": "DOUBLE",
+      "logical_type": "float"
+    },
+    {
+      "name": "borrow_apy_percent",
+      "type": "double",
+      "nullable": true,
+      "physical_type": "DOUBLE",
+      "logical_type": "float"
+    },
+    {
+      "name": "total_supply_native",
+      "type": "double",
+      "nullable": true,
+      "physical_type": "DOUBLE",
+      "logical_type": "float"
+    },
+    {
+      "name": "total_supply_usd",
+      "type": "double",
+      "nullable": true,
+      "physical_type": "DOUBLE",
+      "logical_type": "float"
+    },
+    {
+      "name": "total_borrow_native",
+      "type": "double",
+      "nullable": true,
+      "physical_type": "DOUBLE",
+      "logical_type": "float"
+    },
+    {
+      "name": "total_borrow_usd",
+      "type": "double",
+      "nullable": true,
+      "physical_type": "DOUBLE",
+      "logical_type": "float"
+    },
+    {
+      "name": "utilization_rate_percent",
+      "type": "double",
+      "nullable": true,
+      "physical_type": "DOUBLE",
+      "logical_type": "float"
+    },
+    {
+      "name": "lltv_percent",
+      "type": "double",
+      "nullable": true,
+      "physical_type": "DOUBLE",
+      "logical_type": "float"
+    },
+    {
+      "name": "oracle_address",
+      "type": "large_string",
+      "nullable": true,
+      "physical_type": "BYTE_ARRAY",
+      "logical_type": "string"
+    },
+    {
+      "name": "irm_address",
+      "type": "large_string",
+      "nullable": true,
+      "physical_type": "BYTE_ARRAY",
+      "logical_type": "string"
+    },
+    {
+      "name": "partition_date",
+      "type": "int64",
+      "nullable": true,
+      "physical_type": "INT64",
+      "logical_type": "integer"
+    }
+  ]
+}
