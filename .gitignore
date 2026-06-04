@@ -9,6 +9,7 @@ src/__pycache__/
 *.pyo
 *.pyd
 tests/__pycache__/
+config.json
 
 # python build
 *.egg-info/
